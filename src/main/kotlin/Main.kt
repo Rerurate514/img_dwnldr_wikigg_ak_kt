@@ -16,7 +16,8 @@ class ArknightsImageDownloader {
         .build()
 
     private val baseUrl = "https://arknights.wiki.gg"
-    private val startUrl = "$baseUrl/wiki/Category:Background_images"
+//    private val startUrl = "$baseUrl/wiki/Category:Background_images"
+    private val startUrl = "$baseUrl/wiki/Category:Story_images"
     private val downloadDir = File("img")
     private val targetSize = "1024x576"
 
@@ -90,9 +91,7 @@ class ArknightsImageDownloader {
             if (src.isNotEmpty()) {
                 // 高解像度版のURLを取得
                 val fullSizeUrl = getFullSizeImageUrl(src)
-                if (isTargetSize(fullSizeUrl)) {
-                    imageUrls.add(fullSizeUrl)
-                }
+                imageUrls.add(fullSizeUrl)
             }
         }
 
@@ -104,7 +103,7 @@ class ArknightsImageDownloader {
                 try {
                     val filePageUrl = if (href.startsWith("http")) href else baseUrl + href
                     val imageUrl = extractImageFromFilePage(filePageUrl)
-                    if (imageUrl.isNotEmpty() && isTargetSize(imageUrl)) {
+                    if (imageUrl.isNotEmpty()) {
                         imageUrls.add(imageUrl)
                     }
                 } catch (e: Exception) {
@@ -131,12 +130,6 @@ class ArknightsImageDownloader {
         } catch (e: Exception) {
             ""
         }
-    }
-
-    private fun isTargetSize(imageUrl: String): Boolean {
-        // URLから画像サイズを推測（完全ではないが、多くの場合有効）
-        return imageUrl.contains(targetSize) ||
-                imageUrl.contains("1024") && imageUrl.contains("576")
     }
 
     private fun getNextPageUrl(doc: Document): String {
