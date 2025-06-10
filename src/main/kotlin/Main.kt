@@ -7,6 +7,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URL
 import java.util.concurrent.TimeUnit
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 class ArknightsImageDownloader {
     private val client = OkHttpClient.Builder()
@@ -229,26 +231,115 @@ class ArknightsImageDownloader {
     }
 }
 
-// メイン関数
-suspend fun main() {
-    val downloader = ArknightsImageDownloader()
+fun renameAllFile() {
+    val imgFolder = File("img")
+
+    if (!imgFolder.exists() || !imgFolder.isDirectory) {
+        println("エラー: imgフォルダが存在しません")
+        return
+    }
+
+    val files = imgFolder.listFiles { file -> file.isFile }
+
+    if (files == null || files.isEmpty()) {
+        println("imgフォルダにファイルが見つかりません")
+        return
+    }
+
+    files.sortBy { it.name.lowercase() }
+
+    println("${files.size}個のファイルを連番にリネームします...")
+    println("処理前のファイル一覧:")
+    files.forEachIndexed { index, file ->
+        println("${index + 1}: ${file.name}")
+    }
+
+    print("\n続行しますか？ (y/N): ")
+    val input = readlnOrNull()?.trim()?.lowercase()
+    if (input != "y" && input != "yes") {
+        println("処理をキャンセルしました")
+        return
+    }
+
+    val tempFiles = mutableListOf<Pair<File, String>>()
 
     try {
-        println("Starting Arknights background image download...")
-        println("Target size: 1024x576")
-        println("Download directory: img/")
-        println()
+        files.forEachIndexed { index, file ->
+            val extension = file.extension
+            val newName = if (extension.isNotEmpty()) {
+                String.format("%03d.%s", index + 1, extension)
+            } else {
+                String.format("%03d", index + 1)
+            }
 
-        downloader.downloadAllImages()
+            val newFile = File(imgFolder, newName)
 
-        println("\nDownload process completed!")
+            if (newFile.exists() && newFile != file) {
+                val tempName = "temp_${System.currentTimeMillis()}_${index}"
+                val tempFile = File(imgFolder, tempName)
+                Files.move(file.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                tempFiles.add(Pair(tempFile, newName))
+            } else if (file.name != newName) {
+                Files.move(file.toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                println("${file.name} → $newName")
+            }
+        }
+
+        tempFiles.forEach { (tempFile, finalName) ->
+            val finalFile = File(imgFolder, finalName)
+            Files.move(tempFile.toPath(), finalFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            println("${tempFile.name} → $finalName")
+        }
+
+        println("\nリネーム完了！")
+
+        val renamedFiles = imgFolder.listFiles { file -> file.isFile }
+        if (renamedFiles != null) {
+            renamedFiles.sortBy { it.name }
+            println("\n処理後のファイル一覧:")
+            renamedFiles.forEach { file ->
+                println(file.name)
+            }
+        }
 
     } catch (e: Exception) {
-        println("Error during download process: ${e.message}")
-        e.printStackTrace()
-    } finally {
-        downloader.close()
+        println("エラーが発生しました: ${e.message}")
+
+        // エラー時のクリーンアップ
+        tempFiles.forEach { (tempFile, _) ->
+            if (tempFile.exists()) {
+                println("一時ファイルを削除: ${tempFile.name}")
+                tempFile.delete()
+            }
+        }
     }
+}
+
+val File.extension: String
+    get() = if (name.contains('.')) name.substringAfterLast('.') else ""
+
+// メイン関数
+suspend fun main() {
+//    val downloader = ArknightsImageDownloader()
+//
+//    try {
+//        println("Starting Arknights background image download...")
+//        println("Target size: 1024x576")
+//        println("Download directory: img/")
+//        println()
+//
+//        downloader.downloadAllImages()
+//
+//        println("\nDownload process completed!")
+//
+//    } catch (e: Exception) {
+//        println("Error during download process: ${e.message}")
+//        e.printStackTrace()
+//    } finally {
+//        downloader.close()
+//    }
+
+    renameAllFile();
 }
 
 // 実行用のエントリーポイント
